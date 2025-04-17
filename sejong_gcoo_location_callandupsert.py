@@ -38,29 +38,40 @@ pprint(datas[:5])
 # 데이터베이스 연결 설정
 try:
     connection = psycopg2.connect(
-        dbname="sejong",  # 데이터베이스 이름
-        user="chojungseok",         # PostgreSQL 사용자 이름
-        password="jungseok0324!",     # 사용자 비밀번호
-        host="localhost",             # 데이터베이스 호스트 (기본값은 localhost)
-        port="5432"                   # PostgreSQL 포트 (기본값은 5432)
+        dbname="sejong",
+        user="chojungseok",
+        password="jungseok0324!",
+        host="localhost",
+        port="5432"
     )
     
-    # 연결이 성공하면 커서 생성
     cursor = connection.cursor()
-    
-    insert_query = """
-        insert into GBIKE (battery, citycode, cityname, latitude, longitude, providername, vehicleid)
-        values(%s, %s, %s, %s, %s, %s, %s)
+
+    upsert_query = """
+        INSERT INTO GBIKE (battery, citycode, cityname, latitude, longitude, providername, vehicleid)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (vehicleid) DO UPDATE SET
+            battery = EXCLUDED.battery,
+            citycode = EXCLUDED.citycode,
+            cityname = EXCLUDED.cityname,
+            latitude = EXCLUDED.latitude,
+            longitude = EXCLUDED.longitude,
+            providername = EXCLUDED.providername;
     """
 
     for data in datas:
-        cursor.execute(insert_query, (data['battery'], data['citycode'], data['cityname'], data['latitude'], data['longitude'], data['providername'], data['vehicleid']))
+        cursor.execute(upsert_query, (
+            data['battery'], data['citycode'], data['cityname'],
+            data['latitude'], data['longitude'], data['providername'],
+            data['vehicleid']
+        ))
 
     connection.commit()
+
 except Exception as error:
     print('error 발생', error)
+
 finally:
-    # 연결 종료
     if connection:
         cursor.close()
         connection.close()
